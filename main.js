@@ -9,43 +9,68 @@ setUpInput();
 function setUpInput() {
   window.addEventListener('keydown', handleUserInput, { once: true })
 }
-function handleUserInput(e) {
+async function handleUserInput(e) {
   switch (e.key) {
     case 'ArrowUp':
-      moveUp();
+      if (!canMoveUp()) {
+        setUpInput();
+        return
+      }
+      await moveUp();
       break;
     case 'ArrowDown':
-      moveDown()
+      if (!canMoveDown()) {
+        setUpInput();
+        return
+      }
+      await moveDown()
       break;
     case 'ArrowLeft':
-      moveLeft()
+      if (!canMoveLeft()) {
+        setUpInput();
+        return
+      }
+      await moveLeft()
       break;
     case 'ArrowRight':
-      moveRight()
+      if (!canMoveRight()) {
+        setUpInput();
+        return
+      }
+      await moveRight()
       break;
     default:
       setUpInput()
       return
   }
   game.cells.forEach(cell => cell.mergeTiles())
+  const newTile = new Tile(gameBoard);
+  game.randomEmptyCell().tile = newTile;
+  if (!canMoveUp() && !canMoveDown() && !canMoveLeft() && !canMoveRight()) {
+    newTile.waitForTransition(true).then(() => {
+      alert('Game Over')
+    })
+    return
+  }
   setUpInput()
 }
 
 function moveUp() {
-  slideTiles(game.cellsByColumn)
+  return slideTiles(game.cellsByColumn)
 }
 function moveDown() {
-  slideTiles(game.cellsByColumn.map(column => [...column].reverse()))
+  return slideTiles(game.cellsByColumn.map(column => [...column].reverse()))
 }
 function moveLeft() {
-  slideTiles(game.cellsByRow)
+  return slideTiles(game.cellsByRow)
 }
 function moveRight() {
-  slideTiles(game.cellsByRow.map(row => [...row].reverse()))
+  return slideTiles(game.cellsByRow.map(row => [...row].reverse()))
 }
 
-function slideTiles(cells) {
-  cells.forEach(group => {
+async function slideTiles(cells) {
+  cells.flatMap(group => {
+    const promises = [];
     for (let i = 1; i < group.length; i++) {
       const cell = group[i];
       if (cell.tile == null) continue;
@@ -57,6 +82,7 @@ function slideTiles(cells) {
       }
 
       if (lastValidCell != null) {
+        promises.push(cell.tile.waitForTransition())
         if (lastValidCell.tile != null) {
           lastValidCell.mergeTile = cell.tile
         }
@@ -66,5 +92,29 @@ function slideTiles(cells) {
         cell.tile = null
       }
     }
+    return promises
   });
+}
+
+function canMoveUp() {
+  return canMove(game.cellsByColumn)
+}
+function canMoveDown() {
+  return canMove(game.cellsByColumn.map(column => [...column].reverse()))
+}
+function canMoveLeft() {
+  return canMove(game.cellsByRow)
+}
+function canMoveRight() {
+  return canMove(game.cellsByRow.map(row => [...row].reverse()))
+}
+function canMove(cells) {
+  return cells.some(group => {
+    return group.some((cell, index) => {
+      if (index === 0) return false;
+      if (cell.tile == null) return false;
+      const moveToCell = group[index - 1];
+      return moveToCell.canAccept(cell.tile)
+    })
+  })
 }
