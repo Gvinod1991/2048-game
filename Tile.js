@@ -9,6 +9,9 @@ export default class Tile {
     gridElement.append(this.#tileElement)
     this.value = value
   }
+  get value() {
+    return this.#value
+  }
   set value(v) {
     this.#tileElement.textContent = v
     this.#value = v
@@ -24,5 +27,8 @@ export default class Tile {
   set y(value) {
     this.#y = value;
     this.#tileElement.style.setProperty('--y', value)
+  }
+  remove() {
+    this.#tileElement.remove()
   }
 }
